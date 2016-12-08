@@ -68,6 +68,11 @@ def process_event(event, dpts1_dir):
     # get path of the file of interest
     if event.event_type == EVENT_TYPE_MOVED:
         title = 'Renamed'
+        if not event.src_path.endswith('.pdf'):
+            # might be a download file, not a real pdf
+            logging.warning('Move event not actually a pdf renaming. Ignored.')
+            event_lock = False
+            return 
         pdf = event.dest_path
     elif event.event_type == EVENT_TYPE_CREATED:
         title = 'Created'
