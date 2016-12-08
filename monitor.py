@@ -5,21 +5,29 @@ import logging
 from tkinter import messagebox as mbox
 from collections import deque
 from subprocess import Popen, PIPE
-
 from watchdog.events import PatternMatchingEventHandler, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers import Observer
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+        # format='%(asctime)s %(levelname)s> %(message)s'
+        format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
+
 f_expand = os.path.expanduser
 
 event_deque = deque()
 event_lock = False
 
-class PaperEventHandler(PatternMatchingEventHandler):
-    # Tkinter cannot go here because of OS Sierra bug
+class PdfEventHandler(PatternMatchingEventHandler):
+    def __init__(self, *args, trigger_on_create=True, **kwargs):
+        # if trigger_on_create=True, create event will also trigger pdf trimming
+        super(PdfEventHandler, self).__init__(*args,  
+                    patterns=['*.pdf'], ignore_directories=True, **kwargs)
+        self.trigger_on_create = trigger_on_create
+
+    # Tkinter cannot launch here because of OS Sierra bug
     def add_event(self, event):
         global event_deque, event_lock
-        if event_lock:
+        if False and event_lock: # disabled
             logging.info('event_lock in action, ignore this event.')
         else:
             logging.info('added to event queue.')
@@ -30,8 +38,11 @@ class PaperEventHandler(PatternMatchingEventHandler):
         self.add_event(event)
 
     def on_created(self, event):
-        logging.info(event)
-        self.add_event(event)
+        if self.trigger_on_create:
+            logging.info(event)
+            self.add_event(event)
+        else:
+            logging.warning('trigger_on_create=False: {} ignored'.format(event))
 
     def on_deleted(self, event):
         logging.info(event)
@@ -69,21 +80,27 @@ def process_event(event, dpts1_dir):
     if response:
         old_dir, old_file = os.path.split(pdf)
         trim_pdf(pdf, os.path.join(dpts1_dir, old_file))
+    else:
+        logging.warning('User cancelled.')
     # release the lock when we are done
     event_lock = False
     
 # First path defaults to pdf working dir. Add Mendeley path from the second one. 
-assert len(sys.argv) >= 3, 'must have at least two paths, first for DPT-S1 and second (and all the rest) for Mendeley'
+assert len(sys.argv) >= 3, 'must have at least two paths, first for DPT-S1, second for Mendeley (trigger_on_create=False), and all the rest (if any) for other folders to be watched (trigger_on_create=True)'
 dpts1_dir, *paths = sys.argv[1:]
+logging.info('DPT-S1 box sync dir: ' + dpts1_dir)
 observers = []
-for path in paths:
-    event_handler = PaperEventHandler(patterns=['*.pdf'],
-                                      ignore_directories=True)
+for i, path in enumerate(paths):
+    # first dir is Mendeley, only trigger on move. 
+    event_handler = PdfEventHandler(trigger_on_create=(i > 0))
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)
     observer.start()
     observers.append(observer)
-    logging.info('Observer started in ' + path)
+    if i == 0:
+        logging.info('Mendeley observer (trigger_on_create=False) started in ' + path)
+    else:
+        logging.info('Normal observer started in ' + path)
 
 try:
     while True:
