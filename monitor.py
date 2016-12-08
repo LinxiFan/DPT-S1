@@ -12,6 +12,9 @@ logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
         format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
 
+PDF_EXE = 'bin/k2pdfopt-mac-2.35'
+os.chdir(os.path.dirname(sys.argv[0])) # change to own dir
+
 f_expand = os.path.expanduser
 
 event_deque = deque()
@@ -56,7 +59,7 @@ def trim_pdf(in_pdf, out_pdf, margin=0.15):
     in_pdf = f_expand(in_pdf)
     out_pdf = f_expand(out_pdf)
     # tm: trim mode, x: exit on completion, om: output margin (inch)
-    proc = Popen(['bin/k2pdfopt-mac-2.35', in_pdf, '-mode', 'tm', '-x', '-o', out_pdf, '-om', '{0},{0},{0},{0}'.format(margin)], stdin=PIPE)
+    proc = Popen([PDF_EXE, in_pdf, '-mode', 'tm', '-x', '-o', out_pdf, '-om', '{0},{0},{0},{0}'.format(margin)], stdin=PIPE)
     proc.communicate(input=b'\n')
 
 
@@ -114,6 +117,8 @@ def process_event(event, dpts1_dir):
 # ==================== MAIN ====================
 # First path defaults to pdf working dir. Add Mendeley path from the second one. 
 assert len(sys.argv) >= 3, 'must have at least two paths, first for DPT-S1, second for Mendeley (trigger_on_create=False), and all the rest (if any) for other folders to be watched (trigger_on_create=True)'
+assert os.path.isfile(PDF_EXE), PDF_EXE + ' cannot be found.'
+
 dpts1_dir, *paths = sys.argv[1:]
 logging.info('DPT-S1 box sync dir: ' + dpts1_dir)
 observers = []
