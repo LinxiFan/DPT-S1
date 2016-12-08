@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import logging
-from tkinter import messagebox as mbox
+from tkinter import Tk, Toplevel, messagebox as mbox
 from collections import deque
 from subprocess import Popen, PIPE
 from watchdog.events import PatternMatchingEventHandler, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
@@ -60,8 +60,29 @@ def trim_pdf(in_pdf, out_pdf, margin=0.15):
     proc.communicate(input=b'\n')
 
 
-# dpts1_dir: DPT-S1 dir to copy pdf to
+def get_root(center=True):
+    # return Tkinter root panel that always stays on the front
+    # http://stackoverflow.com/questions/3375227/how-to-give-tkinter-file-dialog-focus
+    root = Tk()
+    # Make it almost invisible - no decorations, 0 size, top left corner.
+    root.overrideredirect(True)
+    if center:
+        w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+        w, h = w // 2, h // 2
+    else:
+        w, h = 0, 0
+    root.geometry('0x0+{}+{}'.format(w, h))
+    # Show window again and lift it to top so it can get focus,
+    # otherwise dialogs will end up behind the terminal.
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+    return root
+
+
+tk_root = get_root(False)
 def process_event(event, dpts1_dir):
+    # dpts1_dir: DPT-S1 dir to copy pdf to
     # hold a lock so that no events can be triggered when we process files
     global event_lock
     event_lock = True
@@ -81,7 +102,7 @@ def process_event(event, dpts1_dir):
         raise ValueError('Unknown event: {}'.format(event))
     assert pdf.endswith('.pdf'), pdf + ' must be a pdf file.'
     # ask user whether to process this event or not
-    response = mbox.askyesno(title, pdf)
+    response = mbox.askyesno(title, pdf, parent=tk_root)
     if response:
         old_dir, old_file = os.path.split(pdf)
         trim_pdf(pdf, os.path.join(dpts1_dir, old_file))
@@ -90,6 +111,7 @@ def process_event(event, dpts1_dir):
     # release the lock when we are done
     event_lock = False
     
+# ==================== MAIN ====================
 # First path defaults to pdf working dir. Add Mendeley path from the second one. 
 assert len(sys.argv) >= 3, 'must have at least two paths, first for DPT-S1, second for Mendeley (trigger_on_create=False), and all the rest (if any) for other folders to be watched (trigger_on_create=True)'
 dpts1_dir, *paths = sys.argv[1:]
