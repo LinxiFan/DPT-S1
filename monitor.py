@@ -5,7 +5,7 @@ import logging
 from tkinter import Tk, Toplevel, messagebox as mbox
 from collections import deque
 from subprocess import Popen, PIPE
-from watchdog.events import PatternMatchingEventHandler, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
+from watchdog.events import PatternMatchingEventHandler, FileMovedEvent, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.INFO,
@@ -13,7 +13,10 @@ logging.basicConfig(level=logging.INFO,
         format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
 
 PDF_EXE = 'bin/k2pdfopt-mac-2.35'
-os.chdir(os.path.dirname(sys.argv[0])) # change to own dir
+
+current_dir = os.path.dirname(sys.argv[0]) 
+if current_dir: # avoid empty string
+    os.chdir(current_dir) # change to own dir
 
 f_expand = os.path.expanduser
 
@@ -83,6 +86,30 @@ def get_root(center=True):
     return root
 
 
+def pop_collapse_deque(event_deque):
+    # collapse multiple consecutive renaming
+    # if nothing to collapse, pop the left most
+    pop_i = 0 # pop until (exclusive)
+    while pop_i + 1 < len(event_deque):
+        older = event_deque[pop_i]
+        newer = event_deque[pop_i + 1]
+        if (older.event_type == EVENT_TYPE_MOVED
+            and newer.event_type == EVENT_TYPE_MOVED
+            and older.dest_path == newer.src_path):
+            pop_i += 1
+    if pop_i > 0:
+        start = event_deque[0]
+        end = event_deque[pop_i]
+        collapsed = FileMovedEvent(start.src_path, end.dest_path)
+        for i in range(pop_i + 1):
+            event_deque.popleft()
+        logging.info('Collapsing {} renaming events into {}'
+                     .format(pop_i + 1, collapsed))
+        return collapsed
+    else:
+        return event_deque.popleft()
+
+
 tk_root = get_root(False)
 def process_event(event, dpts1_dir):
     # dpts1_dir: DPT-S1 dir to copy pdf to
@@ -136,9 +163,9 @@ for i, path in enumerate(paths):
 
 try:
     while True:
-        time.sleep(2)
+        time.sleep(3)
         if event_deque:
-            event = event_deque.popleft()
+            event = pop_collapse_deque(event_deque)
             process_event(event, dpts1_dir)
 except KeyboardInterrupt:
     [observer.stop() for observer in observers]
