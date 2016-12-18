@@ -1,3 +1,8 @@
+# configs
+PDF_EXE = 'bin/k2pdfopt-mac-2.35'
+MONITOR_INTERVAL = 1
+MONITOR_DELAY = 7 # wait after the first event arrives
+
 import os
 import sys
 import time
@@ -11,8 +16,6 @@ from watchdog.observers import Observer
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
         format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
-
-PDF_EXE = 'bin/k2pdfopt-mac-2.35'
 
 current_dir = os.path.dirname(sys.argv[0]) 
 if current_dir: # avoid empty string
@@ -119,7 +122,7 @@ def process_event(event, dpts1_dir):
     # get path of the file of interest
     if event.event_type == EVENT_TYPE_MOVED:
         title = 'Renamed'
-        if not event.src_path.endswith('.pdf'):
+        if not event.dest_path.endswith('.pdf'):
             # might be a download file, not a real pdf
             logging.warning('Move event not actually a pdf renaming. Ignored.')
             event_lock = False
@@ -161,12 +164,18 @@ for i, path in enumerate(paths):
     else:
         logging.info('Normal observer started in ' + path)
 
+delay = MONITOR_DELAY
 try:
     while True:
-        time.sleep(3)
+        time.sleep(MONITOR_INTERVAL)
         if event_deque:
+            if delay > 0:
+                delay -= 1
+                continue
             event = pop_collapse_deque(event_deque)
             process_event(event, dpts1_dir)
+        delay = MONITOR_DELAY
+
 except KeyboardInterrupt:
     [observer.stop() for observer in observers]
 [observer.join() for observer in observers]
