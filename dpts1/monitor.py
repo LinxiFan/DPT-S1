@@ -1,7 +1,12 @@
-# configs
+#!/usr/bin/env python3
+
+"""
+@author: jimfan
+"""
 PDF_EXE = 'bin/k2pdfopt-mac-2.35'
 MONITOR_INTERVAL = 1
 MONITOR_DELAY = 7 # wait after the first event arrives
+
 
 import os
 import sys
@@ -16,6 +21,7 @@ from watchdog.observers import Observer
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
         format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
+PDF_EXE = os.path.join(os.path.dirname(__file__), PDF_EXE)
 
 current_dir = os.path.dirname(sys.argv[0]) 
 if current_dir: # avoid empty string
