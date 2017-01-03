@@ -12,20 +12,21 @@ import os
 import sys
 import time
 import logging
-from tkinter import Tk, Toplevel, messagebox as mbox
 from collections import deque
 from subprocess import Popen, PIPE
 from watchdog.events import PatternMatchingEventHandler, FileMovedEvent, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers import Observer
+from dpts1.tk_utils import entry_prompt
 
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
         format='%(asctime)s> %(message)s', datefmt='%H:%M:%S')
 PDF_EXE = os.path.join(os.path.dirname(__file__), PDF_EXE)
 
-current_dir = os.path.dirname(sys.argv[0]) 
-if current_dir: # avoid empty string
-    os.chdir(current_dir) # change to own dir
+# No need to chdir if `pip install -e .`
+# current_dir = os.path.dirname(sys.argv[0]) 
+# if current_dir: # avoid empty string
+#     os.chdir(current_dir) # change to own dir
 
 f_expand = os.path.expanduser
 
@@ -75,26 +76,6 @@ def trim_pdf(in_pdf, out_pdf, margin=0.15):
     proc.communicate(input=b'\n')
 
 
-def get_root(center=True):
-    # return Tkinter root panel that always stays on the front
-    # http://stackoverflow.com/questions/3375227/how-to-give-tkinter-file-dialog-focus
-    root = Tk()
-    # Make it almost invisible - no decorations, 0 size, top left corner.
-    root.overrideredirect(True)
-    if center:
-        w, h = root.winfo_screenwidth(), root.winfo_screenheight()
-        w, h = w // 2, h // 2
-    else:
-        w, h = 0, 0
-    root.geometry('0x0+{}+{}'.format(w, h))
-    # Show window again and lift it to top so it can get focus,
-    # otherwise dialogs will end up behind the terminal.
-    root.deiconify()
-    root.lift()
-    root.focus_force()
-    return root
-
-
 def pop_collapse_deque(event_deque):
     # collapse multiple consecutive renaming
     # if nothing to collapse, pop the left most
@@ -119,7 +100,6 @@ def pop_collapse_deque(event_deque):
         return event_deque.popleft()
 
 
-tk_root = get_root(False)
 def process_event(event, dpts1_dir):
     # dpts1_dir: DPT-S1 dir to copy pdf to
     # hold a lock so that no events can be triggered when we process files
@@ -141,10 +121,12 @@ def process_event(event, dpts1_dir):
         raise ValueError('Unknown event: {}'.format(event))
     assert pdf.endswith('.pdf'), pdf + ' must be a pdf file.'
     # ask user whether to process this event or not
-    response = mbox.askyesno(title, pdf, parent=tk_root)
+    dpt_parent_dir, dpt_default_child_dir = os.path.split(os.path.normpath(dpts1_dir))
+    response = entry_prompt(os.path.basename(pdf), default=dpt_default_child_dir)
     if response:
+        child_dir = response
         old_dir, old_file = os.path.split(pdf)
-        trim_pdf(pdf, os.path.join(dpts1_dir, old_file))
+        trim_pdf(pdf, os.path.join(dpt_parent_dir, child_dir, old_file))
     else:
         logging.warning('User cancelled.')
     # release the lock when we are done
