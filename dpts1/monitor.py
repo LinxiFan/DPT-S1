@@ -87,6 +87,9 @@ def pop_collapse_deque(event_deque):
             and newer.event_type == EVENT_TYPE_MOVED
             and older.dest_path == newer.src_path):
             pop_i += 1
+        else:
+            break
+
     if pop_i > 0:
         start = event_deque[0]
         end = event_deque[pop_i]
