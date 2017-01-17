@@ -102,6 +102,8 @@ def pop_collapse_deque(event_deque):
     else:
         return event_deque.popleft()
 
+# global var that records the last entered folder name
+last_default_dir = None
 
 def process_event(event, dpts1_dir):
     # dpts1_dir: DPT-S1 dir to copy pdf to
@@ -125,9 +127,14 @@ def process_event(event, dpts1_dir):
     assert pdf.endswith('.pdf'), pdf + ' must be a pdf file.'
     # ask user whether to process this event or not
     dpt_parent_dir, dpt_default_child_dir = os.path.split(os.path.normpath(dpts1_dir))
-    response = entry_prompt(os.path.basename(pdf), default=dpt_default_child_dir)
+    global last_default_dir
+    if last_default_dir:
+        default = last_default_dir
+    else:
+        default = dpt_default_child_dir
+    response = entry_prompt(os.path.basename(pdf), default=default)
     if response:
-        child_dir = response
+        child_dir = last_default_dir = response
         old_dir, old_file = os.path.split(pdf)
         trim_pdf(pdf, os.path.join(dpt_parent_dir, child_dir, old_file))
     else:
