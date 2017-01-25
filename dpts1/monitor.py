@@ -4,8 +4,7 @@
 @author: jimfan
 """
 PDF_EXE = 'bin/k2pdfopt-mac-2.35'
-MONITOR_INTERVAL = 1
-MONITOR_DELAY = 7 # wait after the first event arrives
+MONITOR_INTERVAL = 3
 
 
 import os
@@ -132,7 +131,31 @@ def process_event(event, dpts1_dir):
         default = last_default_dir
     else:
         default = dpt_default_child_dir
-    response = entry_prompt(os.path.basename(pdf), default=default)
+
+    # Inside 'entry_prompt' tkinter callback to update the label text
+    # update when a renaming happens
+    def update_event_label_template(root, labelvar, global_handler_id):
+        global event_deque
+        nonlocal pdf
+        def update_event_label():
+            nonlocal pdf
+            # re-register itself to run repeatedly
+            if event_deque:
+                next_event = event_deque[0]
+                if (next_event.event_type == EVENT_TYPE_MOVED
+                    and next_event.src_path == pdf):
+                    event_deque.popleft()
+                    pdf = next_event.dest_path
+                    labelvar.set(os.path.basename(pdf))
+                    logging.info('On-the-fly rename: ' + os.path.basename(pdf))
+                    root.update()
+            global_handler_id[0] = root.after(2000, update_event_label)
+        return update_event_label
+
+    response = entry_prompt(os.path.basename(pdf), 
+                            window_title='DPT-S1',
+                            default=default, 
+                            callback_template=update_event_label_template)
     if response:
         child_dir = last_default_dir = response
         old_dir, old_file = os.path.split(pdf)
@@ -162,17 +185,12 @@ for i, path in enumerate(paths):
     else:
         logging.info('Normal observer started in ' + path)
 
-delay = MONITOR_DELAY
 try:
     while True:
         time.sleep(MONITOR_INTERVAL)
         if event_deque:
-            if delay > 0:
-                delay -= 1
-                continue
             event = pop_collapse_deque(event_deque)
             process_event(event, dpts1_dir)
-        delay = MONITOR_DELAY
 
 except KeyboardInterrupt:
     [observer.stop() for observer in observers]
