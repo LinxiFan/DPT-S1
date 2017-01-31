@@ -12,10 +12,11 @@ import sys
 import time
 import logging
 from collections import deque
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 from watchdog.events import PatternMatchingEventHandler, FileMovedEvent, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers import Observer
 from dpts1.tk_utils import entry_prompt
+import pickle
 
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
@@ -27,9 +28,23 @@ PDF_EXE = os.path.join(os.path.dirname(__file__), PDF_EXE)
 # if current_dir: # avoid empty string
 #     os.chdir(current_dir) # change to own dir
 
+# Remember the last crash in a file
+RECOVERY = 'DPTS1_RECOVERY.bin'
 f_expand = os.path.expanduser
 
-event_deque = deque()
+if os.path.exists(RECOVERY):
+    logging.info('Recovering from ' + RECOVERY)
+    with open(RECOVERY, 'rb') as f:
+        event_deque = pickle.load(f)
+    assert isinstance(event_deque, deque), 'Bad recovery file'
+else:
+    event_deque = deque()
+
+def save_recovery():
+    global event_deque
+    with open(RECOVERY, 'wb') as f:
+        pickle.dump(event_deque, f)
+
 event_lock = False
 
 class PdfEventHandler(PatternMatchingEventHandler):
@@ -153,7 +168,7 @@ def process_event(event, dpts1_dir):
         return update_event_label
 
     response = entry_prompt(os.path.basename(pdf), 
-                            window_title='DPT-S1',
+                            window_title='DPT-S1: ' + title,
                             default=default, 
                             callback_template=update_event_label_template)
     if response:
@@ -189,8 +204,10 @@ try:
     while True:
         time.sleep(MONITOR_INTERVAL)
         if event_deque:
+            save_recovery()
             event = pop_collapse_deque(event_deque)
             process_event(event, dpts1_dir)
+            save_recovery()
 
 except KeyboardInterrupt:
     [observer.stop() for observer in observers]
