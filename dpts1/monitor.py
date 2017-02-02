@@ -17,6 +17,7 @@ from watchdog.events import PatternMatchingEventHandler, FileMovedEvent, EVENT_T
 from watchdog.observers import Observer
 from dpts1.tk_utils import entry_prompt
 import pickle
+from copy import deepcopy
 
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
@@ -40,10 +41,17 @@ if os.path.exists(RECOVERY):
 else:
     event_deque = deque()
 
+def backup_deque():
+    global event_deque_bak
+    # peek version of event_deque
+    event_deque_bak = deepcopy(event_deque) 
+    
+backup_deque()
+
 def save_recovery():
     global event_deque
     with open(RECOVERY, 'wb') as f:
-        pickle.dump(event_deque, f)
+        pickle.dump(event_deque_bak, f)
 
 event_lock = False
 
@@ -62,6 +70,8 @@ class PdfEventHandler(PatternMatchingEventHandler):
         else:
             logging.info('added to event queue.')
             event_deque.append(event)
+            event_deque_bak.append(event)
+            save_recovery()
 
     def on_moved(self, event):
         logging.info(event)
@@ -204,9 +214,11 @@ try:
     while True:
         time.sleep(MONITOR_INTERVAL)
         if event_deque:
+            backup_deque()
             save_recovery()
             event = pop_collapse_deque(event_deque)
             process_event(event, dpts1_dir)
+            backup_deque()
             save_recovery()
 
 except KeyboardInterrupt:
