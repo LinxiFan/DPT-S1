@@ -12,7 +12,22 @@ import sys
 import time
 import logging
 from collections import deque
-from subprocess import Popen, PIPE, call
+from subprocess import Popen, PIPE
+
+# ================== master script ==================
+import shlex
+# recover if worker dies
+if '-auto' in sys.argv:
+    sys.argv.remove('-auto')
+    print('Auto-recovery mode activated.')
+    while True:
+        argvs = list(map(shlex.quote, sys.argv))
+        os.system(' '.join(['python'] + argvs))
+        time.sleep(1)
+        print('='*10, 'Recovering', '='*10)
+
+
+# ================== worker script ==================
 from watchdog.events import PatternMatchingEventHandler, FileMovedEvent, EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 from watchdog.observers import Observer
 from dpts1.tk_utils import entry_prompt
