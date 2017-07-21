@@ -33,6 +33,7 @@ from watchdog.observers import Observer
 from dpts1.tk_utils import entry_prompt
 import pickle
 from copy import deepcopy
+from dpts1.mendeley import tag_path
 
 logging.basicConfig(level=logging.INFO,
         # format='%(asctime)s %(levelname)s> %(message)s'
@@ -199,7 +200,7 @@ def process_event(event, dpts1_dir):
     if response:
         child_dir = last_default_dir = response
         old_dir, old_file = os.path.split(pdf)
-        trim_pdf(pdf, os.path.join(dpt_parent_dir, child_dir, old_file))
+        trim_pdf(pdf, os.path.join(dpt_parent_dir, tag_path(child_dir), old_file))
     else:
         logging.warning('User cancelled.')
     # release the lock when we are done
