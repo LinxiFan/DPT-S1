@@ -12,9 +12,9 @@ TAG_FOLDER = [
     ('Vision', ['ObjRecog', 'Video', 'Visualize']),
     ('NLP', ['LangModel', 'Semantic', 'QA', 'Speech', 'Translation']),
     ('GAN', []),
-    ('Mathy', ['Theory', 'Variational', 'Optimization', 'ClassicML']),
+    ('Foundation', ['Theory', 'Variational', 'Optimization', 'ClassicML']),
     ('Turing', []),
-    ('RL', ['HRL', 'Imitation', 'Robotics']),
+    ('RL', ['RL-App', 'RL-Exploration', 'RL-HRL', 'RL-Imitation', 'RL-OffPolicy', 'Robotics', 'RL-PG']),
     # other non-tags
     ('Books', []),
     ('Vault', []),
