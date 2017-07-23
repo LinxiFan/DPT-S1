@@ -200,7 +200,10 @@ def process_event(event, dpts1_dir):
     if response:
         child_dir = last_default_dir = response
         old_dir, old_file = os.path.split(pdf)
-        trim_pdf(pdf, os.path.join(dpt_parent_dir, tag_path(child_dir), old_file))
+        new_path = os.path.join(dpt_parent_dir,
+                                tag_path(child_dir, autocorrect=True),
+                                old_file)
+        trim_pdf(pdf, new_path)
     else:
         logging.warning('User cancelled.')
     # release the lock when we are done
