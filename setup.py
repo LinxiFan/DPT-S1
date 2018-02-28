@@ -21,7 +21,8 @@ setup(name='dpts1',
       packages=['dpts1'],
       entry_points={
         'console_scripts': [
-            'dpts1 = dpts1.monitor'
+            'dpts1 = dpts1.monitor',
+            'trim-folder = dpts1.trim_folder:main'
         ]
       },
       classifiers=[
